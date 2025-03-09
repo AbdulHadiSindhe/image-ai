@@ -1,0 +1,333 @@
+<!DOCTYPE html><html lang="en"><head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-message {
+            display: block;
+            word-wrap: break-word;
+            margin-bottom: 2px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .scale-in {
+            animation: scaleIn 0.2s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .spinner {
+            display: none;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+          #chatbox::-webkit-scrollbar {
+      width: 8px;
+    }
+    .chatbox::-webkit-scrollbar-track {
+      background-color: #F3F4F6;
+    }
+    .chatbox::-webkit-scrollbar-thumb {
+      background-color: #6B7280;
+      border-radius: 4px;
+    }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-gradient-to-r from-indigo-500 to-pink-500 w-full p-4 mb-4">
+        <div class="container mx-auto px-4 max-w-md flex justify-between items-center">
+            <h1 class="text-white text-xl font-bold">AI BY A . H . S</h1>
+            <button id="themeToggle" class="p-2 rounded-full bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </div>
+    <div class="container mx-auto px-4 h-full relative max-w-md">
+        <div class="py-6 px-4 rounded max-w-md mx-auto h-full flex flex-col">
+            <div id="chatbox" class="flex flex-col h-full overflow-y-scroll pb-16 flex-grow mb-20 space-y-2">
+            </div>
+            <div class="fixed left-1/2 transform -translate-x-1/2 bottom-0 w-full bg-gray-100 py-2 px-4 max-w-md mx-auto md:bottom-0" style="z-index: 10;">
+                <form id="chatForm" onsubmit="event.preventDefault();">
+                    <div class="flex w-full">
+                        <div class="relative flex-1 flex items-center">
+                            <button id="micButton" type="button" class="absolute left-4 text-gray-400 hover:text-indigo-500 transition-colors flex items-center h-10 -mt-3.5">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <style>
+                                /* Add this to your existing styles */
+                                #chatInput::-webkit-scrollbar {
+                                    display: none;
+                                }
+                                #chatInput {
+                                    -ms-overflow-style: none;
+                                    scrollbar-width: none;
+                                }
+                            </style>
+                            <textarea id="chatInput" rows="1" class="w-full py-3 px-12 mb-4 rounded-full bg-white text-gray-800 border border-gray-300 resize-none h-12 overflow-y-auto scrollbar-hide" placeholder="Type your message"></textarea>
+                            <button id="sendButton" type="button" class="absolute right-2 px-3 mb-4 bg-gradient-to-r from-indigo-500 to-pink-500 text-white rounded-full h-10 w-10 flex items-center justify-center hover:opacity-90">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="spinner absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatForm = document.getElementById("chatForm");
+        const sendButton = document.getElementById("sendButton");
+        const chatInput = document.getElementById('chatInput');
+        const themeToggle = document.getElementById('themeToggle');
+        const chatbox = document.getElementById('chatbox');
+        const spinner = document.querySelector('.spinner');
+        let isDarkTheme = false;
+        // Auto-resize textarea
+        chatInput.addEventListener('input', function() {
+            this.style.height = '48px'; // Fixed height of 3rem (48px)
+            if (this.scrollHeight > 48) {
+                this.style.overflowY = 'auto';
+            } else {
+                this.style.overflowY = 'hidden';
+            }
+        });
+        // Initialize
+        chatInput.focus();
+        
+        // Image Display Functions
+        function displayLargeImage(imageUrl) {
+            const largeImageContainer = document.createElement('div');
+            largeImageContainer.className = 'fixed top-0 left-0 w-screen p-2 h-screen bg-black bg-opacity-70 flex justify-center items-center z-30';
+            largeImageContainer.onclick = (e) => {
+                e.stopPropagation();
+                largeImageContainer.remove();
+            }
+
+            const largeImage = document.createElement('img');
+            largeImage.src = imageUrl;
+            largeImage.className = 'max-w-full max-h-full rounded-lg';
+
+            const downloadLargeButton = document.createElement("button");
+            downloadLargeButton.innerHTML = "Download";
+            downloadLargeButton.className = "absolute bottom-6 md:bottom-10 left-1/2 p-2 text-white rounded bg-gradient-to-r from-indigo-500 to-pink-500 bg-opacity-80 hover:opacity-90 transform -translate-x-1/2";
+            downloadLargeButton.onclick = (e) => {
+                e.stopPropagation();
+                downloadImage(imageUrl);
+            };
+
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '<i class="fas fa-times"></i>';
+            closeButton.className = 'absolute top-6 right-6 p-2 text-red-500 rounded-full bg-opacity-80 hover:bg-opacity-100';
+            closeButton.onclick = (e) => {
+                e.stopPropagation();
+                largeImageContainer.remove();
+            };
+
+            largeImageContainer.appendChild(largeImage);
+            largeImageContainer.appendChild(downloadLargeButton);
+            largeImageContainer.appendChild(closeButton);
+            document.body.appendChild(largeImageContainer);
+        }
+
+        function handleImageResponse(imageData) {
+            if (imageData.status === 'success') {
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'mx-auto mt-2 relative w-48 h-48 bg-center border-4 rounded-xl border-gray-700 bg-cover';
+                imageContainer.style.backgroundImage = `url(${imageData.imageUrl})`;
+                imageContainer.onclick = () => displayLargeImage(imageData.imageUrl);
+
+                const downloadButton = document.createElement('button');
+                downloadButton.innerHTML = '<i class="fas fa-download"></i>';
+                downloadButton.className = 'absolute bottom-2 right-2 p-2 text-white rounded-full bg-gradient-to-r from-indigo-500 to-pink-500 hover:opacity-90';
+                downloadButton.onclick = (e) => {
+                    e.stopPropagation();
+                    downloadImage(imageData.imageUrl);
+                };
+
+                imageContainer.appendChild(downloadButton);
+                chatbox.appendChild(imageContainer);
+            } else {
+                handleError(imageData);
+            }
+        }
+
+        // Utility Functions
+        function downloadImage(imageUrl) {
+            const a = document.createElement('a');
+            a.href = imageUrl;
+            a.download = 'generated-image.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function displayMessage(message, isUser) {
+            const msgElem = document.createElement('p');
+            msgElem.textContent = message;
+            msgElem.className = isUser 
+                ? 'chat-message block text-right text-white mt-2 bg-gradient-to-r from-indigo-500 to-pink-500 rounded-tl-lg rounded-br-lg rounded-bl-sm px-4 py-2 inline-block max-w-[80%] ml-auto' 
+                : 'chat-message block text-white mt-2 bg-gray-600 rounded-tr-lg rounded-br-lg rounded-bl-md px-4 py-2 inline-block max-w-[80%]';
+            chatbox.appendChild(msgElem);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        async function callApi(prompt) {
+            spinner.style.display = 'block';
+            chatInput.value = "Generating...";
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+
+            try {
+                const response = await fetch('https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQm55c3dEcmtBdkNCZTZka1VjMWR6X0tZWHVvTHJ6YkplQnRWb1BWWjhEZTgxRm1BdzR4YkNWWEU4cXg3VGZld2N5TnFUVDJPZVBLSE5fWGFHZ3RrZ0ZSS3dLWXFoVTlqSnN3SU9nLXN5V2xlWndtOXc9', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt})
+                });
+                return await response.json();
+            } finally {
+                spinner.style.display = 'none';
+                chatInput.value = "";
+                chatInput.disabled = false;
+                sendButton.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        function handleError(error) {
+            console.error('Error:', error);
+            displayMessage('An error occurred. Please try again.', false);
+        }
+
+        // Event Listeners
+        sendButton.addEventListener('click', async () => {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            displayMessage(message, true);
+            chatInput.value = '';
+
+            try {
+                const data = await callApi(message);
+                if (data.status === 'success') {
+                    handleImageResponse(data);
+                } else {
+                    handleError(data);
+                }
+            } catch (error) {
+                handleError(error);
+            }
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendButton.click();
+            }
+        });
+
+        themeToggle.addEventListener('click', () => {
+            isDarkTheme = !isDarkTheme;
+            
+            document.body.className = isDarkTheme ? 'bg-gray-900' : 'bg-gray-100';
+            
+            const bottomBar = document.querySelector('.fixed.bottom-0');
+            bottomBar.className = isDarkTheme
+                ? 'fixed left-1/2 transform -translate-x-1/2 bottom-0 w-full bg-gray-800 py-2 px-4 max-w-md mx-auto md:bottom-0'
+                : 'fixed left-1/2 transform -translate-x-1/2 bottom-0 w-full bg-gray-100 py-2 px-4 max-w-md mx-auto md:bottom-0';
+            
+            chatInput.className = isDarkTheme 
+                ? 'w-full py-3 px-12 mb-4 rounded-full bg-gray-700 text-white border-0 resize-none h-12 overflow-y-auto scrollbar-hide'
+                : 'w-full py-3 px-12 mb-4 rounded-full bg-white text-gray-800 border border-gray-300 resize-none h-12 overflow-y-auto scrollbar-hide';
+            themeToggle.innerHTML = isDarkTheme ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            themeToggle.className = isDarkTheme 
+                ? 'p-2 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors'
+                : 'p-2 rounded-full bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors';
+        });
+    // Speech Recognition Setup
+    const micButton = document.getElementById('micButton');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        chatInput.value = text;
+        micButton.classList.remove('text-red-500');
+        micButton.classList.add('text-gray-400');
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        micButton.classList.remove('text-red-500');
+        micButton.classList.add('text-gray-400');
+    };
+    
+    recognition.onend = () => {
+        micButton.classList.remove('text-red-500');
+        micButton.classList.add('text-gray-400');
+    };
+    
+    micButton.addEventListener('click', () => {
+        if (micButton.classList.contains('text-red-500')) {
+            recognition.stop();
+        } else {
+            recognition.start();
+            micButton.classList.remove('text-gray-400');
+            micButton.classList.add('text-red-500');
+        }
+    });
+    </script>
+</body></html>
