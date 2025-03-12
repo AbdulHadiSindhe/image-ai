@@ -1,0 +1,291 @@
+<!DOCTYPE html><html lang="en"><head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-message {
+            display: block;
+            word-wrap: break-word;
+            margin-bottom: 2px;
+        }
+        .spinner {
+            display: none;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        #chatbox::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatbox::-webkit-scrollbar-track {
+            background-color: #F3F4F6;
+        }
+        #chatbox::-webkit-scrollbar-thumb {
+            background-color: #6B7280;
+            border-radius: 4px;
+        }
+        .gradient-header {
+            background: linear-gradient(90deg, #6366F1 0%, #A855F7 50%, #EC4899 100%);
+        }
+        .user-message-gradient {
+            background: linear-gradient(90deg, #3B82F6 0%, #EC4899 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto min-h-screen flex flex-col">
+        <!-- Header with gradient -->
+        <div class="gradient-header py-4 px-4 flex justify-between items-center w-full sticky top-0 z-10">
+            <h1 class="text-white text-xl font-bold flex-grow text-center">AI BY A . H . S</h1>
+        </div>
+        
+        <!-- Chat container -->
+        <div class="flex-grow bg-gray-100 overflow-hidden flex flex-col max-w-md mx-auto w-full">
+            <div id="chatbox" class="flex flex-col flex-grow overflow-y-auto p-4 space-y-2 pb-24">
+            </div>
+            
+            <!-- Input area -->
+            <div class="p-4 border-t border-gray-200 fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-100 z-10" style="width: inherit;">
+                <form id="chatForm" class="flex items-center">
+                    <div class="flex-grow relative">
+                        <div class="flex w-full bg-white rounded-full shadow-md overflow-hidden border border-gray-200">
+                            <button id="infoButton" type="button" class="pl-4 text-gray-500" onclick="showInfoPopup(event)">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <input id="chatInput" type="text" class="w-full py-3 px-3 bg-transparent text-gray-800 border-none focus:outline-none" placeholder="Type your message">
+                            <div id="infoTooltip" class="absolute hidden right-0 bottom-full mb-2 bg-gray-700 text-white text-xs p-2 rounded-lg shadow" style="width: 200px;"></div>
+                        </div>
+                    </div>
+                    <button id="sendButton" class="ml-2 p-3 user-message-gradient text-white rounded-full hover:opacity-90 transition-colors shadow-md">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="spinner absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"></div>
+    </div>
+
+    <script>
+        function displayLargeImage(imageUrl) {
+            const largeImageContainer = document.createElement('div');
+            largeImageContainer.className = 'fixed top-0 left-0 w-screen p-2 h-screen bg-black bg-opacity-70 flex justify-center items-center z-30';
+            largeImageContainer.onclick = (e) => {
+                e.stopPropagation();
+                largeImageContainer.remove();
+            }
+
+            const largeImage = document.createElement('img');
+            largeImage.src = imageUrl;
+            largeImage.className = 'max-w-full max-h-full rounded-lg';
+
+            const downloadLargeButton = document.createElement("button");
+            downloadLargeButton.innerHTML = "Download";
+            downloadLargeButton.className = "absolute bottom-6 md:bottom-10 left-1/2 p-2 text-white rounded bg-green-500 bg-opacity-80 hover:bg-opacity-100 transform -translate-x-1/2";
+            downloadLargeButton.onclick = (e) => {
+              e.stopPropagation();
+              const a = document.createElement('a');
+              a.href = imageUrl;
+              a.download = 'generated-image.png';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            };
+
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '<i class="fas fa-times"></i>';
+            closeButton.className = 'absolute top-6 right-6 p-2 text-red-500 rounded-full bg-opacity-80 hover:bg-opacity-100';
+            closeButton.onclick = (e) => {
+              e.stopPropagation();
+              largeImageContainer.remove();
+            };
+
+            largeImageContainer.appendChild(largeImage);
+            largeImageContainer.appendChild(downloadLargeButton);
+            largeImageContainer.appendChild(closeButton);
+            document.body.appendChild(largeImageContainer);
+        }
+        const chatForm = document.getElementById("chatForm");
+        const sendButton = document.getElementById("sendButton");
+        const chatInput = document.getElementById('chatInput');
+        chatInput.focus();
+        const chatbox = document.getElementById('chatbox');
+        const spinner = document.querySelector('.spinner');
+
+        function displayMessage(message, isUser) {
+            const msgElem = document.createElement('p');
+            msgElem.textContent = message;
+            msgElem.className = isUser 
+                ? 'chat-message max-w-[80%] ml-auto text-white user-message-gradient rounded-t-2xl rounded-bl-2xl px-4 py-2' 
+                : 'chat-message max-w-[80%] text-white bg-gray-700 rounded-t-2xl rounded-br-2xl px-4 py-2';
+            chatbox.appendChild(msgElem);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        async function callApi(apiUrl, prompt, prependPersona = false) {
+            if (prependPersona) {
+                prompt = "You are an AI assistant that can generate images. When the user asks you to generate, create, or make an image, photo, or picture of something, respond with '/image' followed by the description. For example, if they ask for an image of a lion, respond with '/image lion'. Do not apologize or say you can't provide images." + prompt;
+            }
+            chatInput.value = apiUrl === "https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQm4wR1RDbXpzX2NQbDFsMEoycHRuM0ZxZUhmVkY4enBYVkR6bXZVQ3Y4NWNwREozQTVwS2k0UDBOM2d6VW80MFlGX21kLWRjN0tyLUdvYXVKczNTQzRjdEFZc0E9PQ==" ? "Generating..." : "Typing...";
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({prompt})
+            });
+
+            chatInput.value = "";
+            chatInput.disabled = false;
+            sendButton.disabled = false;
+            chatInput.focus();
+            return response.json();
+        }
+
+        function handleError(error) {
+            console.error('Error:', error);
+            displayMessage('An error occurred. Please try again.', false);
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            displayMessage(message, true);
+            chatInput.value = '';
+
+            const apiUrl = message.startsWith('/image') ? 'https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQm4wR1RDbXpzX2NQbDFsMEoycHRuM0ZxZUhmVkY4enBYVkR6bXZVQ3Y4NWNwREozQTVwS2k0UDBOM2d6VW80MFlGX21kLWRjN0tyLUdvYXVKczNTQzRjdEFZc0E9PQ=='
+                                                      : 'https://backend.buildpicoapps.com/aero/run/llm-api?pk=v1-Z0FBQUFBQm4wR1RDbXpzX2NQbDFsMEoycHRuM0ZxZUhmVkY4enBYVkR6bXZVQ3Y4NWNwREozQTVwS2k0UDBOM2d6VW80MFlGX21kLWRjN0tyLUdvYXVKczNTQzRjdEFZc0E9PQ==';
+
+            try {
+                const prependPersona = apiUrl === 'https://backend.buildpicoapps.com/aero/run/llm-api?pk=v1-Z0FBQUFBQm4wR1RDbXpzX2NQbDFsMEoycHRuM0ZxZUhmVkY4enBYVkR6bXZVQ3Y4NWNwREozQTVwS2k0UDBOM2d6VW80MFlGX21kLWRjN0tyLUdvYXVKczNTQzRjdEFZc0E9PQ==';
+                const data = await callApi(apiUrl, message.startsWith('/image') ? message.substring(6).trim() : message, prependPersona);
+                if (data.status === 'success') {
+                    if (message.toLowerCase().startsWith('/image')) {
+                        handleImageResponse(data);
+                    } else {
+                        if (data.text.trim().toLowerCase().startsWith('/image')) {
+                            const imageDescription = data.text.substring(data.text.toLowerCase().indexOf('/image') + 6).trim();
+                            const imageData = await callApi('https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQm4wR1RDbXpzX2NQbDFsMEoycHRuM0ZxZUhmVkY4enBYVkR6bXZVQ3Y4NWNwREozQTVwS2k0UDBOM2d6VW80MFlGX21kLWRjN0tyLUdvYXVKczNTQzRjdEFZc0E9PQ==', imageDescription, false);
+                            handleImageResponse(imageData);
+                        } else {
+                            displayMessage(data.text, false);
+                        }
+                    }
+                } else {
+                    handleError(data);
+                }
+
+                function handleImageResponse(imageData) {
+                    if (imageData.status === 'success') {
+                        const imageContainer = document.createElement('div');
+                        imageContainer.className = 'mx-auto mt-2 relative w-48 h-48 bg-center border-4 rounded-xl border-gray-700 bg-cover';
+                        imageContainer.style.backgroundImage = `url(${imageData.imageUrl})`;
+                        imageContainer.onclick = (e) => {
+                            e.stopPropagation();
+                            displayLargeImage(imageData.imageUrl);
+                        }
+
+                        const downloadButton = document.createElement('button');
+                        downloadButton.innerHTML = '';
+                        downloadButton.className = 'absolute bottom-0 right-0 p-2 text-yellow-500 rounded-tl hover:bg-blue-500 hover:text-white';
+                        downloadButton.onclick = () => {
+                          const a = document.createElement('a');
+                          a.href = imageData.imageUrl;
+                          a.download = 'generated-image.png';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        };
+
+                        imageContainer.appendChild(downloadButton);
+                        chatbox.appendChild(imageContainer);
+                    } else {
+                        handleError(imageData);
+                    }
+                }
+            } catch (error) {
+                handleError(error);
+            }
+        });
+
+        function showInfoPopup(e) {
+          e.preventDefault();
+          const tooltip = document.getElementById("infoTooltip");
+          if (tooltip.classList.contains("hidden")) {
+            tooltip.classList.remove("hidden");
+          } else {
+            tooltip.classList.add("hidden");
+          }
+          
+          // Start speech recognition when microphone is clicked
+          if (e.target.tagName === 'I' && e.target.classList.contains('fa-microphone')) {
+            startSpeechRecognition();
+          }
+        }
+
+        // Add speech recognition functionality
+        function startSpeechRecognition() {
+          if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            
+            // Change microphone icon to indicate recording
+            const micIcon = document.querySelector('#infoButton i');
+            micIcon.classList.remove('fa-microphone');
+            micIcon.classList.add('fa-microphone-slash');
+            micIcon.classList.add('text-red-500');
+            
+            recognition.start();
+            
+            recognition.onresult = function(event) {
+              const speechResult = event.results[0][0].transcript;
+              chatInput.value = speechResult;
+              
+              // Reset microphone icon
+              micIcon.classList.remove('fa-microphone-slash');
+              micIcon.classList.remove('text-red-500');
+              micIcon.classList.add('fa-microphone');
+            };
+            
+            recognition.onerror = function(event) {
+              console.error('Speech recognition error', event.error);
+              
+              // Reset microphone icon
+              const micIcon = document.querySelector('#infoButton i');
+              micIcon.classList.remove('fa-microphone-slash');
+              micIcon.classList.remove('text-red-500');
+              micIcon.classList.add('fa-microphone');
+            };
+            
+            recognition.onend = function() {
+              // Reset microphone icon
+              const micIcon = document.querySelector('#infoButton i');
+              micIcon.classList.remove('fa-microphone-slash');
+              micIcon.classList.remove('text-red-500');
+              micIcon.classList.add('fa-microphone');
+            };
+          } else {
+            alert('Speech recognition is not supported in your browser. Try Chrome or Edge.');
+          }
+        }
+    </script>
+</body></html>
